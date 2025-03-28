@@ -55,7 +55,7 @@ public class Jared: MessageSender {
                 self.executeScript(scriptPath: scriptPath, body: body, recipient: recipient)
             }
         }
-        
+        /*
         if let attachments = message.attachments {
             var scriptPath: String?
             
@@ -70,7 +70,38 @@ public class Jared: MessageSender {
                     self.executeScript(scriptPath: scriptPath, body: attachment.filePath, recipient: recipient)
                 }
             }
+        }*/
+
+        if let attachments = message.attachments {
+            var scriptPath: String?
+            
+            if message.recipient.isGroupHandle() {
+                scriptPath = Bundle.main.url(forResource: "SendImage", withExtension: "scpt")?.path
+            } else {
+                scriptPath = Bundle.main.url(forResource: "SendImageSingleBuddy", withExtension: "scpt")?.path
+            }
+            
+            attachments.forEach { attachment in
+                queue.addOperation {
+                    if let decodedData = Data(base64Encoded: attachment.base64String) {
+                        let tempFilePath = NSTemporaryDirectory().appending(UUID().uuidString)
+                        let tempFileURL = URL(fileURLWithPath: tempFilePath)
+                        
+                        do {
+                            try decodedData.write(to: tempFileURL)
+                            self.executeScript(scriptPath: scriptPath, body: tempFileURL.path, recipient: recipient)
+                        } catch {
+                            NSLog("Failed to write decoded attachment to temporary file: \(error)")
+                        }
+                    } else {
+                        NSLog("Failed to decode base64 attachment")
+                    }
+                }
+            }
         }
+
+
+
     }
     
     private func executeScript(scriptPath: String?, body: String?, recipient: String?) {
